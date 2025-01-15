@@ -143,3 +143,4 @@ Route::get(env('ADMIN_URL').'/random_key', function () {
 })->middleware('auth');
 
 Route::post('/apps/import', 'App\Http\Controllers\ApplicationController@import')->name('apps.import');
+Route::get('admin/apps_translations', 'App\Http\Controllers\ApplicationController@apps_translations')->name('apps_translations');

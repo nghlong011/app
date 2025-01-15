@@ -66,6 +66,10 @@ class AppServiceProvider extends ServiceProvider
                         'text' => __('admin.create_app'),
                         'url' => env('ADMIN_URL') . '/apps/create',
                     ],
+                    [
+                        'text' => __('admin.apps_translations'),
+                        'url' => env('ADMIN_URL') . '/apps_translations',
+                    ]
                 ],
             ]);
 

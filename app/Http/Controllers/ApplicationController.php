@@ -544,16 +544,21 @@ class ApplicationController extends Controller
 
     public function import(Request $request)
     {
-        dd($request->file('file')->getMimeType());
         $request->validate([
             'file' => 'required|mimes:csv,xlsx,xls',
         ]);
-        dd($request->all());
         $path = $request->file('file');
         
         // Dùng hàm của Excel để import
         Excel::import(new AppTranslationImport, $path);
         return redirect()->back()->with('success', 'Import thành công');
+    }
+
+    public function apps_translations()
+    {
+        $rows = AppTranslation::with('translation')->orderBy('id', 'desc')->paginate(15);
+        // Return view
+        return view('adminlte::apps_translations.index', compact('rows'));
     }
         
 }

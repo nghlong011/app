@@ -23,7 +23,10 @@ class AppTranslation extends Model
         'custom_description',
         'custom_h1',
     ];
-
+    public function translation()
+    {
+        return $this->belongsTo(Translation::class, 'lang_id');
+    }
     // Hoặc sử dụng guarded để bảo vệ các cột không được mass assign
     // protected $guarded = ['id', 'created_at', 'updated_at'];
 }
