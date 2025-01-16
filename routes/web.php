@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Route;
 
 $settings = DB::table('settings')->whereIn('name', ['site_language', 'root_language'])->pluck('value', 'name');
 $languages = DB::table('translations')->get();
-
 foreach ($languages as $language) {
     $lang_codes[] = $language->code;
     $lang_id[$language->code] = $language->id;
@@ -22,6 +21,34 @@ $language_id = $lang_id[$site_language_code];
 
 Route::group(['prefix' => $site_language_prefix, 'middleware' => ['language:' . $site_language_code . '']], function () use ($language_id) {
 $settings = DB::table('settings')->where('language', $language_id)->pluck('value', 'name');
+if (!isset($settings['app_base'])) {
+    $settings['app_base'] = 'apps';
+}
+if (!isset($settings['page_base'])) {
+    $settings['page_base'] = 'pages';
+}
+if (!isset($settings['category_base'])) {
+    $settings['category_base'] = 'categories';
+}
+if (!isset($settings['platform_base'])) {
+    $settings['platform_base'] = 'platforms';
+}
+if (!isset($settings['tag_base'])) {
+    $settings['tag_base'] = 'tags';
+}
+if (!isset($settings['topic_base'])) {
+    $settings['topic_base'] = 'topics';
+}
+if (!isset($settings['news_base'])) {
+    $settings['news_base'] = 'news';
+}
+if (!isset($settings['read_base'])) {
+    $settings['read_base'] = 'read';
+}
+if (!isset($settings['contact_slug'])) {
+    $settings['contact_slug'] = 'contact';
+}
+
 Route::get('/', 'App\Http\Controllers\SiteController@index');
 Route::get("/$settings[app_base]/{slug}", 'App\Http\Controllers\SiteController@app');
 Route::get("/$settings[page_base]/{slug}", 'App\Http\Controllers\SiteController@page');
@@ -32,7 +59,6 @@ Route::post('/report', 'App\Http\Controllers\SiteController@report');
 Route::post('/json-search', 'App\Http\Controllers\SiteController@json_search');
 Route::get("/$settings[tag_base]/{slug}", 'App\Http\Controllers\SiteController@tags');
 Route::match(array('GET', 'POST'), '/search', 'App\Http\Controllers\SiteController@search');
-Route::get("/$settings[page_base]/{slug}", 'App\Http\Controllers\SiteController@page');
 Route::get("/$settings[topic_base]", 'App\Http\Controllers\SiteController@topic');
 Route::get("/$settings[topic_base]/{slug}", 'App\Http\Controllers\SiteController@topic_item');
 Route::get("/$settings[news_base]/{slug}", 'App\Http\Controllers\SiteController@category_news');
@@ -67,6 +93,7 @@ Route::get('/news-rss/category/{slug}', 'App\Http\Controllers\RSSController@cate
 Route::group(['prefix' => env('ADMIN_URL'), 'middleware' => ['auth', 'isAdmin']], function () {
 Route::get('/', [App\Http\Controllers\ApplicationController::class, 'index'])->name('home');
 Route::post('/apps/bulk-destroy', 'App\Http\Controllers\ApplicationController@bulk_destory');
+Route::post('/apps_translations/bulk-destroy', 'App\Http\Controllers\ApplicationController@bulk_destory_translations');
 Route::resource('/apps', 'App\Http\Controllers\ApplicationController');
 Route::resource('/versions', 'App\Http\Controllers\VersionController');
 Route::get('/search', 'App\Http\Controllers\SearchController@index');

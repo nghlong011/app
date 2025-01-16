@@ -46,14 +46,14 @@ $("#add_more_sitemap").click(function () {
 $(document).ready(function () {
   "use strict";
 
-$("body").on("click", ".check-all", function () {
-  var checked = $(this).is(":checked");
-  if (checked) {
-    $(".check").prop("checked", true);
-  } else {
-    $(".check").prop("checked", false);
-  }
-});
+  $("body").on("click", ".check-all", function () {
+    var checked = $(this).is(":checked");
+    if (checked) {
+      $(".check").prop("checked", true);
+    } else {
+      $(".check").prop("checked", false);
+    }
+  });
 
 });
 
@@ -94,21 +94,70 @@ function bulk_delete() {
       var url = base_url + "/apps/bulk-destroy";
       var form = $(
         '<form action="' +
-          url +
-          '" method="post"><input type="hidden" name="_token" value="' +
-          csrf_token +
-          '"><input type="hidden" name="bulk" value="1" />' +
-          '<input type="text" name="app_list" value="' +
-          app_list +
-          '" />' +
-          "</form>"
+        url +
+        '" method="post"><input type="hidden" name="_token" value="' +
+        csrf_token +
+        '"><input type="hidden" name="bulk" value="1" />' +
+        '<input type="text" name="app_list" value="' +
+        app_list +
+        '" />' +
+        "</form>"
       );
       $("body").append(form);
       form.submit();
     }
   });
 }
+// Delete App translations
+function delete_app_translations() {
+  "use strict";
+  const app_list = [];
+  var checkboxes = document.getElementsByName("submissions[]");
+  var result = "";
+  for (var i = 0; i < checkboxes.length; i++) {
+    if (checkboxes[i].checked) {
+      app_list.push(checkboxes[i].id);
+    }
+  }
 
+  var data_id = $(this).attr("data-id");
+  var delete_data = document.getElementById("table");
+  var delete_message_title = delete_data.getAttribute(
+    "data-delete-prompt-title"
+  );
+  var delete_message_body = delete_data.getAttribute("data-delete-prompt-body");
+  var delete_yes = delete_data.getAttribute("data-yes");
+  var delete_cancel = delete_data.getAttribute("data-cancel");
+
+  Swal.fire({
+    title: delete_message_title,
+    text: delete_message_body,
+    type: "error",
+    showCancelButton: true,
+    confirmButtonText: delete_yes,
+    cancelButtonText: delete_cancel,
+  }).then((result) => {
+    if (result.value) {
+      $(document);
+      var csrf_token = $('meta[name="csrf-token"]').attr("content");
+      var base_url = $("meta[property=base_url]").attr("content");
+      var url = base_url + "/apps_translations/bulk-destroy";
+      var form = $(
+        '<form action="' +
+        url +
+        '" method="post"><input type="hidden" name="_token" value="' +
+        csrf_token +
+        '"><input type="hidden" name="bulk" value="1" />' +
+        '<input type="text" name="app_list" value="' +
+        app_list +
+        '" />' +
+        "</form>"
+      );
+      $("body").append(form);
+      form.submit();
+    }
+  });
+}
 // Delete Translation
 $(document).ready(function () {
   "use strict";

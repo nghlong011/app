@@ -9,8 +9,6 @@
 <div class="row">
     <div class="col-12">
         <div class="btn-group"> 
-        <a href="{{ asset(env('ADMIN_URL').'/apps/create') }}" class="btn button-green mb-3"><i class="fas fa-plus-square"></i>
-            @lang('admin.create_app')</a>
             <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#export_modal"><i class="fas fa-download"></i> @lang('admin.import')</button>
         </div>
         <div class="card">
@@ -77,7 +75,7 @@
                 </table>
                 @if(!$rows->isEmpty())
                 <div class="card-footer clearfix">
-                    <button type="submit" class="btn btn-danger" onclick="bulk_delete()">@lang('admin.delete')</button>
+                    <button type="submit" class="btn btn-danger" onclick="delete_app_translations()">@lang('admin.delete')</button>
                 </div>
                 @endif
 

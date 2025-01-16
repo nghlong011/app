@@ -25,10 +25,10 @@ class SiteController extends Controller
     public function __construct()
     {
         // Site Settings
+        Cache::forget('settings');
         $this->site_settings = Cache::rememberForever('settings', function () {
             return DB::table('settings')->get();
         });
-
         foreach ($this->site_settings as $setting) {
             $setting_name = $setting->name;
             $this->$setting_name = $setting->value;
@@ -39,12 +39,11 @@ class SiteController extends Controller
                 $slug[$setting->language][$setting->name] = $setting->value;
             }
         }
-
         // Languages
+        Cache::forget('languages');
         $this->languages = Cache::rememberForever('languages', function () {
             return DB::table('translations')->OrderBy('sort', 'ASC')->get();
         });
-
         foreach ($this->languages as $language) {
             $lang_codes[] = $language->code;
             $language_id[$language->code] = $language->id;
@@ -114,11 +113,13 @@ class SiteController extends Controller
         }
 
         // Open Graph locale tags
+        Cache::forget('locale-tags');
         $locale_tags = Cache::rememberForever('locale-tags', function () {
             return DB::table('translations')->get()->pluck('locale_code', 'code');
         });
 
         // Ad Places
+        Cache::forget('ad-places');
         $ad = Cache::rememberForever('ad-places', function () {
             $ad_places = DB::table('ads')->get();
 
@@ -150,18 +151,47 @@ class SiteController extends Controller
             ->sameAs($social_media)
             ->logo(Schema::ImageObject()->url(asset('/'))->id(s3_switch('logo.png')));
 
+            if (!isset($settings['app_base'])) {
+                $settings['app_base'] = 'apps';
+            }
+            if (!isset($settings['page_base'])) {
+                $settings['page_base'] = 'pages';
+            }
+            if (!isset($settings['category_base'])) {
+                $settings['category_base'] = 'categories';
+            }
+            if (!isset($settings['platform_base'])) {
+                $settings['platform_base'] = 'platforms';
+            }
+            if (!isset($settings['tag_base'])) {
+                $settings['tag_base'] = 'tags';
+            }
+            if (!isset($settings['topic_base'])) {
+                $settings['topic_base'] = 'topics';
+            }
+            if (!isset($settings['news_base'])) {
+                $settings['news_base'] = 'news';
+            }
+            if (!isset($settings['read_base'])) {
+                $settings['read_base'] = 'read';
+            }
+            if (!isset($settings['contact_slug'])) {
+                $settings['contact_slug'] = 'contact';
+            }
+            if (!isset($settings['site_title'])) {
+                $settings['site_title'] = 'App Portal';
+            }
         // Pass data to views
         View::share(['ad' => $ad, 'settings' => $settings, 'categories' => $this->categories, 'platforms' => $this->platforms, 'footer_pages' => $footer_pages, 'popular_apps' => $popular_apps, 'locale_tags' => $locale_tags, 'editors_choice' => $editors_choice, 'languages' => $this->languages, 'language_prefix' => $this->language_prefix, 'language_icon_code' => $language_icon_code, 'menu_language_prefix' => $menu_language_prefix, 'language_name' => $this->language_name, 'language_code' => $this->site_language_code, 'localBusiness' => $localBusiness, 'slug' => $slug]);
     }
 
     /** Index */
     public function index()
-    {
+    {        
         $site_description = short_code($this->site_title, $this->site_description);
 
         // Meta tags
         meta_tags($this->site_title, $site_description, $this->twitter_account, s3_switch('default_share_image.png'), 600, 315, 'website');
-
         $new_apps = pure_cache('new_apps', $this->site_language_code, $this->site_language, $this->language_id);
 
         $recently_updated_apps = pure_cache('recently_updated_apps', $this->site_language_code, $this->site_language, $this->language_id);

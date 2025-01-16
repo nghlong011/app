@@ -505,6 +505,36 @@ class ApplicationController extends Controller
         return redirect()->route('apps.index')->with('success', __('admin.content_deleted'));
     }
 
+    // Delete App translations
+    public function bulk_destory_translations(Request $request)
+    {
+        $submissions = $request->input('app_list');
+
+        if ($submissions == null) {
+            return back()->withInput()->withErrors(__('admin.no_record_selected'));
+        }
+
+        $submissions = explode(',', $submissions); //split string into array seperated by ', '
+        foreach ($submissions as $submission) {
+            $app_id = explode('app_', $submission);
+
+            // Retrieve application details
+            $app = AppTranslation::find($app_id[1]);
+
+            if (!empty($app->image)) {
+                image_delete($app->image);
+            }
+
+            $app->delete();
+
+        }
+
+        // Clear cache
+        Cache::flush();
+
+        // Redirect back
+        return redirect()->route('apps_translations')->with('success', __('admin.content_deleted'));
+    }
     /** Destroy */
     public function destroy($id)
     {
@@ -551,6 +581,7 @@ class ApplicationController extends Controller
         
         // Dùng hàm của Excel để import
         Excel::import(new AppTranslationImport, $path);
+        Cache::flush();
         return redirect()->back()->with('success', 'Import thành công');
     }
 
