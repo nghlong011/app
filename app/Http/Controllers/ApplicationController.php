@@ -19,6 +19,11 @@ use App\Models\AppTranslation;
 
 class ApplicationController extends Controller
 {
+    protected $languages;
+    protected $language_id;
+    protected $image_quality;
+    protected $save_as_webp;
+    protected $screenshot_count;
     public function __construct()
     {
         $this->middleware('auth');
@@ -162,15 +167,13 @@ class ApplicationController extends Controller
                 $image = $request->file('different_image');
                 $app->image = image_upload($image, '200', '200', '', $this->image_quality, $this->save_as_webp);
                 image_delete($request->get('image'), 7);
-
             } else {
                 $image = $request->get('image');
                 if ($image != null) {
-                $app->image = image_upload(file_get_contents(s3_switch($image, 7)), '200', '200', '', $this->image_quality, $this->save_as_webp);
-                image_delete($image, 7);
+                    $app->image = image_upload(file_get_contents(s3_switch($image, 7)), '200', '200', '', $this->image_quality, $this->save_as_webp);
+                    image_delete($image, 7);
                 }
             }
-
         }
 
         if ($request->get('app_store') != null) {
@@ -215,7 +218,6 @@ class ApplicationController extends Controller
                 }
 
                 $screenshots_list = implode(',', $ss_array);
-
             } else {
                 $screenshots_list = '';
             }
@@ -224,14 +226,12 @@ class ApplicationController extends Controller
             if ($request->hasFile('different_image')) {
                 $image = $request->file('different_image');
                 $app->image = image_upload($image, '200', '200', '', $this->image_quality, $this->save_as_webp);
-
             } else {
                 $image = $request->get('image');
                 $app->image = image_upload(file_get_contents($image), '200', '200', '', $this->image_quality, $this->save_as_webp);
             }
 
             $app->screenshots = $screenshots_list;
-
         }
 
         $app->save();
@@ -286,25 +286,25 @@ class ApplicationController extends Controller
 
             return redirect()->back()->with('success', __('admin.content_deleted'));
         }
-        
-         // Delete Image
+
+        // Delete Image
         if ($request->has('remove_image')) {
 
-        // Retrieve application details
+            // Retrieve application details
             $app = Application::find($id);
 
             // Return 404 page if app not found
             if ($app == null) {
                 abort(404);
             }
-            
-        if (!empty($app->image)) {
-            image_delete($app->image);
-        }
-        
-        $app->image = null;
 
-        $app->save();
+            if (!empty($app->image)) {
+                image_delete($app->image);
+            }
+
+            $app->image = null;
+
+            $app->save();
 
             // Clear cache
             Cache::flush();
@@ -495,7 +495,6 @@ class ApplicationController extends Controller
 
             // Delete platform records
             DB::table('application_platform')->where('application_id', $app_id[1])->delete();
-
         }
 
         // Clear cache
@@ -526,7 +525,6 @@ class ApplicationController extends Controller
             }
 
             $app->delete();
-
         }
 
         // Clear cache
@@ -578,7 +576,7 @@ class ApplicationController extends Controller
             'file' => 'required|mimes:csv,xlsx,xls',
         ]);
         $path = $request->file('file');
-        
+
         // Dùng hàm của Excel để import
         Excel::import(new AppTranslationImport, $path);
         Cache::flush();
@@ -591,5 +589,70 @@ class ApplicationController extends Controller
         // Return view
         return view('adminlte::apps_translations.index', compact('rows'));
     }
-        
+
+
+    public function uploadImagesFromCsv(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:csv,txt|max:2048',
+        ]);
+
+        $file = $request->file('file');
+        $filePath = $file->getRealPath();
+        $fileData = array_map('str_getcsv', file($filePath));
+
+        $savedImages = [];
+        $failedLinks = [];
+
+        $driver = env('FILESYSTEM_DRIVER'); // Kiểm tra driver lưu trữ
+
+        foreach ($fileData as $index => $row) {
+            if ($index === 0) {
+                // Bỏ qua hàng tiêu đề
+                continue;
+            }
+
+            $imageUrl = $row[2]; // Giả sử URL hình ảnh nằm ở cột thứ ba
+
+            if (filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+                $filename = basename(parse_url($imageUrl, PHP_URL_PATH));
+                $filePath = 'images/' . $filename;
+
+                try {
+                    $imageData = file_get_contents($imageUrl);
+                    if ($imageData) {
+                        // Tạo đối tượng ảnh và chuyển thành WebP
+                        $image = \Image::make($imageData)->heighten(400);
+                        $webpName = pathinfo($filename, PATHINFO_FILENAME) . '.webp'; // Tên ảnh mới với định dạng WebP
+
+                        // Chọn phương thức lưu tùy theo driver
+                        if ($driver == 's3') {
+                            // Lưu lên S3 với định dạng WebP
+                            $imageFile = $image->stream('webp', 80); // Chuyển thành WebP với chất lượng 80
+                            Storage::disk('s3')->put('images/' . $webpName, $imageFile, 'public');
+                        } else {
+                            // Lưu vào thư mục public/screenshots dưới dạng WebP
+                            $location = public_path('screenshots/' . $webpName);
+                            $image->save($location, 80, 'webp'); // Lưu dưới định dạng WebP với chất lượng 80
+                        }
+
+                        $savedImages[] = $webpName;
+                    } else {
+                        $failedLinks[] = $imageUrl;
+                    }
+                } catch (\Exception $e) {
+                    $failedLinks[] = $imageUrl;
+                }
+            } else {
+                $failedLinks[] = $imageUrl;
+            }
+        }
+
+        dd($savedImages);
+
+        return back()->with([
+            'savedImages' => $savedImages,
+            'failedLinks' => $failedLinks,
+        ]);
+    }
 }

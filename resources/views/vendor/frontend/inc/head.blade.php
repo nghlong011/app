@@ -14,18 +14,9 @@
 @endforeach
 @endif
 
-@if ($head_type == '1')
-{!! $schema_data->toScript() !!}
-@foreach ($app_languages as $translation)
-<link rel="alternate" hreflang="{{ $translation['code'] }}" href="{{ asset($menu_language_prefix[$translation['id']].$slug[$translation['id']]['app_base'].'/'.$app_query->slug) }}">
-@endforeach
-@endif
 
-@if ($head_type == '2')
-@foreach ($category_languages as $translation)
-<link rel="alternate" hreflang="{{ $translation['code'] }}" href="{{ asset($menu_language_prefix[$translation['id']].$slug[$translation['id']]['category_base'].'/'.$category_query->slug) }}">
-@endforeach
-@endif
+
+
 
 @if ($head_type == '3')
 @foreach ($platform_languages as $translation)
