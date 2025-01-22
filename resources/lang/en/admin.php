@@ -192,6 +192,7 @@ return [
     'default_share_image' => 'Default Share Image',
     'use_text_logo' => 'Use Text Logo',
     'save_as_webp' => 'Save as WebP',
+    'import_categories' => 'Import Categories',
     'screenshot_count' => 'Screenshots to be Downloaded',
     'image_quality' => 'Image Quality',
     'cronjobs' => 'Cronjobs',

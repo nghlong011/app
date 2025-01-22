@@ -10,8 +10,9 @@
     <div class="col-12">
         <a href="{{ asset(env('ADMIN_URL').'/categories/create') }}" class="btn button-green mb-3"><i class="fas fa-plus-square"></i>
             @lang('admin.create_category')</a>
- <a href="{{ asset(env('ADMIN_URL').'/categories/sort') }}" class="btn button-dark ml-2 mb-3"><i class="fas fa-arrows-alt"></i>
-            @lang('admin.sort_items')</a>    
+        <a href="{{ asset(env('ADMIN_URL').'/categories/sort') }}" class="btn button-dark ml-2 mb-3"><i class="fas fa-arrows-alt"></i>
+            @lang('admin.sort_items')</a>
+        <button class="btn btn-primary mb-3 ml-2" data-toggle="modal" data-target="#import_modal"><i class="fas fa-download"></i> @lang('admin.import_categories')</button>
         <div class="card">
             <div class="table-responsive">
                 <table class="table table-hover text-nowrap m-0" id="table" data-delete-prompt-title="@lang('admin.oops')" data-delete-prompt-body="@lang('admin.delete_prompt')" data-yes="@lang('admin.yes')" data-cancel="@lang('admin.cancel')">
@@ -59,6 +60,26 @@
     </div>
 </div>
 
+<div class="modal" id="import_modal" tabindex="-1" role="dialog" aria-labelledby="import_modal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@lang('admin.import')</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ route('import_data_categories') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="file" name="file">
+                    <button type="submit" class="btn btn-primary">@lang('admin.import')</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
 @if($rows->isEmpty())
 <h6 class="alert alert-warning-custom">@lang('admin.no_records')</h6>
 @endif

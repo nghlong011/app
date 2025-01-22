@@ -23,12 +23,17 @@ class Category extends Model
         ];
     }
     protected $fillable = [
+        'id',
         'title',
         'fa_icon',
         'slug',
         'application_category',
+        'type',
+        'home_page',
         'navbar',
-        'footer'
+        'footer',
+        'right_column',
+        'sort',
     ];
 
     public function applications()
