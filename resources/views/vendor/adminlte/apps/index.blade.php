@@ -8,9 +8,11 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="btn-group"> 
-        <a href="{{ asset(env('ADMIN_URL').'/apps/create') }}" class="btn button-green mb-3"><i class="fas fa-plus-square"></i>
-            @lang('admin.create_app')</a>
+        <div class="btn-group">
+            <a href="{{ asset(env('ADMIN_URL').'/apps/create') }}" class="btn button-green mb-3"><i class="fas fa-plus-square"></i>
+                @lang('admin.create_app')</a>
+            <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#export_modal"><i class="fas fa-download"></i> @lang('admin.import')</button>
+
         </div>
         <div class="card">
 
@@ -97,11 +99,11 @@
                 </button>
             </div>
             <div class="modal-body">
-            <form action="{{ route('apps.import') }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                <input type="file" name="file">
-                <button type="submit" class="btn btn-primary">@lang('admin.import')</button>
-            </form>
+                <form action="{{ route('import_data_application') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="file" name="file">
+                    <button type="submit" class="btn btn-primary">@lang('admin.import')</button>
+                </form>
 
             </div>
         </div>

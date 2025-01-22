@@ -172,4 +172,4 @@ Route::get(env('ADMIN_URL').'/random_key', function () {
 Route::post('/apps/import', 'App\Http\Controllers\ApplicationController@import')->name('apps.import');
 Route::get('admin/apps_translations', 'App\Http\Controllers\ApplicationController@apps_translations')->name('apps_translations');
 //upload link tải image
-Route::post('/upload-image', 'App\Http\Controllers\ApplicationController@uploadImagesFromCsv')->name('upload_image');
+Route::post('/import-data-application', 'App\Http\Controllers\ApplicationController@import_data_application')->name('import_data_application');

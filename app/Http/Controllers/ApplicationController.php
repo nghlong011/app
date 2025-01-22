@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Platform;
 use App\Models\Version;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,7 @@ use Intervention\Image\ImageManagerStatic as Image;
 use Redirect;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AppTranslationImport;
+use App\Imports\ApplicationImport;
 use App\Models\AppTranslation;
 
 class ApplicationController extends Controller
@@ -96,7 +98,6 @@ class ApplicationController extends Controller
     {
         $app = new Application;
         $ver = new Version;
-
         $this->validate($request, [
             'title' => 'required|max:255',
             'slug' => 'nullable|max:255',
@@ -136,7 +137,6 @@ class ApplicationController extends Controller
             $image = $request->file('image');
             $app->image = image_upload($image, '200', '200', '', $this->image_quality, $this->save_as_webp);
         }
-
         $app->slug = $request->get('slug');
         $app->title = $request->get('title');
         $app->description = $request->get('description');
@@ -589,70 +589,15 @@ class ApplicationController extends Controller
         // Return view
         return view('adminlte::apps_translations.index', compact('rows'));
     }
-
-
-    public function uploadImagesFromCsv(Request $request)
+    
+    public function import_data_application(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:csv,txt|max:2048',
+            'file' => 'required|mimes:csv,xlsx,xls',
         ]);
-
-        $file = $request->file('file');
-        $filePath = $file->getRealPath();
-        $fileData = array_map('str_getcsv', file($filePath));
-
-        $savedImages = [];
-        $failedLinks = [];
-
-        $driver = env('FILESYSTEM_DRIVER'); // Kiểm tra driver lưu trữ
-
-        foreach ($fileData as $index => $row) {
-            if ($index === 0) {
-                // Bỏ qua hàng tiêu đề
-                continue;
-            }
-
-            $imageUrl = $row[2]; // Giả sử URL hình ảnh nằm ở cột thứ ba
-
-            if (filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-                $filename = basename(parse_url($imageUrl, PHP_URL_PATH));
-                $filePath = 'images/' . $filename;
-
-                try {
-                    $imageData = file_get_contents($imageUrl);
-                    if ($imageData) {
-                        // Tạo đối tượng ảnh và chuyển thành WebP
-                        $image = \Image::make($imageData)->heighten(400);
-                        $webpName = pathinfo($filename, PATHINFO_FILENAME) . '.webp'; // Tên ảnh mới với định dạng WebP
-
-                        // Chọn phương thức lưu tùy theo driver
-                        if ($driver == 's3') {
-                            // Lưu lên S3 với định dạng WebP
-                            $imageFile = $image->stream('webp', 80); // Chuyển thành WebP với chất lượng 80
-                            Storage::disk('s3')->put('images/' . $webpName, $imageFile, 'public');
-                        } else {
-                            // Lưu vào thư mục public/screenshots dưới dạng WebP
-                            $location = public_path('screenshots/' . $webpName);
-                            $image->save($location, 80, 'webp'); // Lưu dưới định dạng WebP với chất lượng 80
-                        }
-
-                        $savedImages[] = $webpName;
-                    } else {
-                        $failedLinks[] = $imageUrl;
-                    }
-                } catch (\Exception $e) {
-                    $failedLinks[] = $imageUrl;
-                }
-            } else {
-                $failedLinks[] = $imageUrl;
-            }
-        }
-
-        dd($savedImages);
-
-        return back()->with([
-            'savedImages' => $savedImages,
-            'failedLinks' => $failedLinks,
-        ]);
+        $path = $request->file('file');
+        Excel::import(new ApplicationImport, $path);
+        Cache::flush();
+        return redirect()->back()->with('success', 'Import thành công');
     }
 }

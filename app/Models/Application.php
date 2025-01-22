@@ -25,6 +25,8 @@ class Application extends Model
     }
 
     protected $fillable = [
+        'id',
+        'package_name',
         'title',
         'description',
         'details',
@@ -39,7 +41,13 @@ class Application extends Model
         'counter',
         'category',
         'platform',
-        'tags'
+        'tags',
+        'screenshots',
+        'up_votes',
+        'down_votes',
+        'featured',
+        'must_have',
+        'editors_choice',
     ];
 
     public function categories()

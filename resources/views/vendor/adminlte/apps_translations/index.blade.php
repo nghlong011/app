@@ -96,7 +96,7 @@
                 </button>
             </div>
             <div class="modal-body">
-            <form action="{{ route('upload_image') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('apps.import') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="file" name="file">
                 <button type="submit" class="btn btn-primary">@lang('admin.import')</button>
