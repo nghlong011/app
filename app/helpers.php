@@ -491,10 +491,10 @@ function image_upload($image, $width, $height, $old_file, $quality, $extension, 
     $folders = array('images', 'images/news', 'images/topics', 'images/sliders', 'images/categories', 'images/platforms', 'screenshots', 'images/submissions');
 
     if ($extension == '1') {
-        $file_name = time() . '.webp';
+        $file_name = time() . uniqid() . '.webp';
         $format = 'webp';
     } else {
-        $file_name = time() . '.' . $image->getClientOriginalExtension();
+        $file_name = time() . uniqid() . '.' . $image->getClientOriginalExtension();
         $format = $image->getClientOriginalExtension();
     }
 

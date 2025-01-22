@@ -7,48 +7,60 @@ use App\Models\Version;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Image;
 
 class ApplicationImport implements ToModel, WithHeadingRow
 {
     public function model(array $row)
     {
-        // Handle image upload if URL provided
+        // Check if row is empty or invalid
+        if (empty($row) || !isset($row['title'])) {
+            return null;
+        }
+
         $image_name = null;
         if (!empty($row['image'])) {
             try {
                 $imageData = file_get_contents($row['image']);
                 if ($imageData) {
-                    // Use image_upload helper to process and save image
                     $image_name = image_upload($imageData, 200, 200, '', 85, 1, 0);
                 }
             } catch (\Exception $e) {
-                // Handle image download/processing error
                 report($e);
             }
         }
+
         $screenshots = [];
         if (!empty($row['screenshots'])) {
             try {
-                $screenshots_links = explode(',', $row['screenshots']);
+                $screenshots_links = explode(';', $row['screenshots']);
                 foreach ($screenshots_links as $screenshot_link) {
-                    $screenshots[] = image_upload($screenshot_link, 200, 200, '', 85, 1, 6);
+                    $screenshot_link = trim($screenshot_link);
+                    $imageData = file_get_contents($screenshot_link);
+                    if ($imageData) {
+                        $screenshots[] = image_upload($imageData, 200, 200, '', 85, 1, 6);
+                    }
                 }
             } catch (\Exception $e) {
-                // Handle image download/processing error
                 report($e);
             }
         }
-        //chuyển mảng thành chuỗi
         $screenshots = implode(',', $screenshots);
-        // Create application record
-        $app = Application::create([
-            'id' => $row['id'],
+
+        // Validate required fields
+        if (!isset($row['id']) || !isset($row['title'])) {
+            return null;
+        }
+        //slug tạo từ title
+        $row['slug'] = Str::slug($row['title']);
+        
+        $appData = [
             'title' => $row['title'], 
             'slug' => $row['slug'],
-            'description' => $row['description'],
-            'package_name' => $row['package_name'],
-            'details' => $row['details'],
+            'description' => $row['description'] ?? null,
+            'package_name' => $row['package_name'] ?? null,
+            'details' => $row['details'] ?? null,
             'image' => $image_name,
             'license' => $row['license'] ?? null,
             'developer' => $row['developer'] ?? null,
@@ -60,27 +72,33 @@ class ApplicationImport implements ToModel, WithHeadingRow
             'must_have' => $row['must_have'] ?? 0,
             'editors_choice' => $row['editors_choice'] ?? 0,
             'screenshots' => $screenshots ?? null,
-        ]);
-        // Sync categories
+        ];
+
+        $app = Application::updateOrCreate(
+            ['id' => $row['id']],
+            $appData
+        );
+
         if (!empty($row['categories'])) {
-            $categories = explode('.', $row['categories']);
+            $categories = explode(';', $row['categories']);
             $app->categories()->sync($categories);
         }
 
-        // Sync platforms 
         if (!empty($row['platforms'])) {
-            $platforms = explode('.', $row['platforms']);
+            $platforms = explode(';', $row['platforms']);
             $app->platforms()->sync($platforms);
         }
 
-        // Create version record
-        Version::create([
-            'app_id' => $app->id,
-            'version' => $row['version'],
-            'file_size' => $row['file_size'],
-            'url' => $row['url'],
-            'counter' => $row['counter'],
-        ]);
+        // Validate version data before creating
+        if (isset($row['version']) && isset($row['url'])) {
+            Version::create([
+                'app_id' => $app->id,
+                'version' => $row['version'],
+                'file_size' => $row['file_size'] ?? null,
+                'url' => $row['url'],
+                'counter' => $row['counter'] ?? 0,
+            ]);
+        }
 
         return $app;
     }
