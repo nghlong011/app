@@ -174,3 +174,4 @@ Route::get('admin/apps_translations', 'App\Http\Controllers\ApplicationControlle
 //upload link tải image
 Route::post('/import-data-application', 'App\Http\Controllers\ApplicationController@import_data_application')->name('import_data_application');
 Route::post('/import-data-categories', 'App\Http\Controllers\CategoryController@import_data_categories')->name('import_data_categories');
+Route::post('/import-data-platforms', 'App\Http\Controllers\PlatformController@import_data_platforms')->name('import_data_platforms');

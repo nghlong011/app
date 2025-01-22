@@ -23,9 +23,14 @@ class Platform extends Model
         ];
     }
     protected $fillable = [
+        'id',
         'title',
         'fa_icon',
-        'slug'
+        'slug',
+        'navbar',
+        'footer',
+        'right_column',
+        'sort',
     ];
 
     public function applications()

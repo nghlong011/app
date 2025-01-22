@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\View;
 use Intervention\Image\ImageManagerStatic as Image;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\PlatformsImport;
 use Redirect;
 
 class PlatformController extends Controller
@@ -301,4 +303,14 @@ class PlatformController extends Controller
         return redirect()->back()->with('success', __('admin.content_deleted'));
     }
 
+    public function import_data_platforms(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:csv,xlsx,xls',
+        ]);
+        $path = $request->file('file');
+        Excel::import(new PlatformsImport, $path);
+        Cache::flush();
+        return redirect()->back()->with('success', 'Import thành công');
+    }
 }
