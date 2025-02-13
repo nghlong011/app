@@ -39,7 +39,7 @@ class ApplicationImport implements ToModel, WithHeadingRow
                     $screenshot_link = trim($screenshot_link);
                     $imageData = file_get_contents($screenshot_link);
                     if ($imageData) {
-                        $screenshots[] = image_upload($imageData, 200, 200, '', 85, 1, 6);
+                        $screenshots[] = image_upload($imageData, 400, 400, '', 85, 1, 6);
                     }
                 }
             } catch (\Exception $e) {
@@ -62,6 +62,7 @@ class ApplicationImport implements ToModel, WithHeadingRow
             'package_name' => $row['package_name'] ?? null,
             'details' => $row['details'] ?? null,
             'image' => $image_name,
+            'page_views' => $row['page_views'] ?? 0,
             'license' => $row['license'] ?? null,
             'developer' => $row['developer'] ?? null,
             'buy_url' => $row['buy_url'] ?? null,
@@ -91,13 +92,14 @@ class ApplicationImport implements ToModel, WithHeadingRow
 
         // Validate version data before creating
         if (isset($row['version']) && isset($row['url'])) {
-            Version::create([
-                'app_id' => $app->id,
-                'version' => $row['version'],
-                'file_size' => $row['file_size'] ?? null,
-                'url' => $row['url'],
-                'counter' => $row['counter'] ?? 0,
-            ]);
+            Version::updateOrCreate(
+                ['app_id' => $app->id, 'version' => $row['version']],
+                [
+                    'file_size' => $row['file_size'] ?? null,
+                    'url' => $row['url'],
+                    'counter' => $row['counter'] ?? 0,
+                ]
+            );
         }
 
         return $app;

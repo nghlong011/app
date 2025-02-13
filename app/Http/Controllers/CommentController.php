@@ -6,7 +6,10 @@ use App\Models\Comment;
 use DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\View;
-
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\CommentImport;
+use Illuminate\Http\Request;
+use App\Models\Application;
 class CommentController extends Controller
 {
 
@@ -151,5 +154,24 @@ class CommentController extends Controller
 
         // Redirect to list of comments
         return redirect()->route('comments.index')->with('success', __('admin.content_deleted'));
+    }
+    public function comment_import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:csv,xlsx,xls',
+        ]);
+        $path = $request->file('file');
+        Excel::import(new CommentImport, $path);
+        //update application rating và total_rating cho từng application
+        $applications = Application::all();
+        foreach ($applications as $application) {
+            $app_id = $application->id;
+            $app_rating = Comment::where('content_id', $app_id)->where('type', 1)->avg('rating');
+            $application->votes = $app_rating ?? 0;
+            $application->total_votes = Comment::where('content_id', $app_id)->where('type', 1)->count();
+            $application->save();
+        }
+        Cache::flush();
+        return redirect()->back()->with('success', 'Import thành công');
     }
 }

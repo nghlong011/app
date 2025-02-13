@@ -26,6 +26,7 @@ class Application extends Model
 
     protected $fillable = [
         'id',
+        'page_views',
         'package_name',
         'title',
         'description',
