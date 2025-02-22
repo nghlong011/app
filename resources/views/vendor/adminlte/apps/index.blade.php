@@ -103,6 +103,7 @@
                     @csrf
                     <input type="file" name="file">
                     <button type="submit" class="btn btn-primary">@lang('admin.import')</button>
+                    <button type="button" id="cancel-import" class="btn btn-danger d-none">Hủy</button>
                 </form>
                 <div id="execution-time" style="margin-top: 10px; font-weight: bold;"></div>
             </div>
@@ -116,8 +117,15 @@
 {{ $rows->onEachSide(1)->links() }}
 
 <script>
+let isImporting = false;
+let shouldCancel = false;
+
 document.getElementById('import-form').addEventListener('submit', function(event) {
     event.preventDefault();
+    
+    isImporting = true;
+    shouldCancel = false;
+    document.getElementById('cancel-import').classList.remove('d-none');
     
     let startTime = Date.now();
     let executionTimeElement = document.getElementById('execution-time');
@@ -125,7 +133,6 @@ document.getElementById('import-form').addEventListener('submit', function(event
     
     let formData = new FormData(this);
     
-    // Bước 1: Upload file và chuẩn bị chunks
     fetch("{{ route('import_data_application') }}", {
         method: 'POST',
         body: formData
@@ -134,16 +141,43 @@ document.getElementById('import-form').addEventListener('submit', function(event
     .then(data => {
         if (data.success) {
             executionTimeElement.textContent = `Tổng số dòng: ${data.total_rows}. Bắt đầu xử lý...`;
-            processChunks(data.path, 0, data.total_chunks);
+            processChunks(data.path, 0, data.total_rows);
         }
     })
     .catch(error => {
+        isImporting = false;
+        document.getElementById('cancel-import').classList.add('d-none');
         executionTimeElement.textContent = 'Có lỗi xảy ra khi tải file!';
         console.error('Error:', error);
     });
 });
 
-function processChunks(path, chunkIndex, totalChunks) {
+// Thêm xử lý sự kiện click cho nút cancel
+document.getElementById('cancel-import').addEventListener('click', function() {
+    shouldCancel = true;
+    isImporting = false;
+    this.classList.add('d-none');
+    document.getElementById('execution-time').textContent = 'Đang hủy quá trình import...';
+    
+    // Gọi API để xóa file tạm nếu cần
+    fetch("{{ route('import_data_application') }}/cancel", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    }).then(() => {
+        document.getElementById('execution-time').textContent = 'Đã hủy quá trình import.';
+        location.reload();
+    });
+});
+
+function processChunks(path, chunkIndex, totalRows) {
+    if (shouldCancel) {
+        document.getElementById('execution-time').textContent = 'Đã hủy quá trình import.';
+        return;
+    }
+
     fetch("{{ route('process_chunk') }}", {
         method: 'POST',
         headers: {
@@ -159,18 +193,25 @@ function processChunks(path, chunkIndex, totalChunks) {
     .then(data => {
         if (data.success) {
             let executionTimeElement = document.getElementById('execution-time');
-            executionTimeElement.textContent = `Đã xử lý ${data.processed_rows} dòng (${data.progress}%)`;
+            executionTimeElement.textContent = `Đã xử lý ${data.processed_rows}/${totalRows} dòng (${data.progress}%)`;
             
-            // Nếu còn chunks thì tiếp tục xử lý
-            if (chunkIndex + 1 < totalChunks) {
-                processChunks(path, chunkIndex + 1, totalChunks);
+            if (chunkIndex + 1 < totalRows && !shouldCancel) {
+                setTimeout(() => {
+                    processChunks(path, chunkIndex + 1, totalRows);
+                }, 100);
             } else {
-                executionTimeElement.textContent = 'Hoàn thành import dữ liệu!';
-                setTimeout(() => location.reload(), 2000);
+                isImporting = false;
+                document.getElementById('cancel-import').classList.add('d-none');
+                if (!shouldCancel) {
+                    executionTimeElement.textContent = 'Hoàn thành import dữ liệu!';
+                    setTimeout(() => location.reload(), 2000);
+                }
             }
         }
     })
     .catch(error => {
+        isImporting = false;
+        document.getElementById('cancel-import').classList.add('d-none');
         let executionTimeElement = document.getElementById('execution-time');
         executionTimeElement.textContent = 'Có lỗi xảy ra trong quá trình xử lý!';
         console.error('Error:', error);

@@ -624,7 +624,7 @@ class ApplicationController extends Controller
                 throw new \Exception('Không có dữ liệu hợp lệ để import sau khi lọc');
             }
             // Chia thành các chunks nhỏ, mỗi chunk 10 rows
-            $chunks = array_chunk($rows, 10);
+            $chunks = array_chunk($rows, 1);
             return response()->json([
                 'success' => true,
                 'total_chunks' => count($chunks),
@@ -661,8 +661,9 @@ class ApplicationController extends Controller
             
             $rows = array_filter($data[0], function($row) {
                 return !empty($row['id']) && !empty($row['title']) && array_filter($row);
-            });           
-            $chunks = array_chunk($rows, 10);
+            });
+            
+            $chunks = array_chunk($rows, 1); // Xử lý từng row một
             
             if (!isset($chunks[$chunk_index])) {
                 throw new \Exception('Chunk index không hợp lệ');
@@ -672,7 +673,6 @@ class ApplicationController extends Controller
             DB::beginTransaction();
             
             try {
-                // Import chunk hiện tại
                 foreach ($chunk as $row) {
                     (new ApplicationImport)->model($row);
                 }
@@ -695,9 +695,9 @@ class ApplicationController extends Controller
             return response()->json([
                 'success' => true,
                 'chunk_index' => $chunk_index,
-                'processed_rows' => ($chunk_index + 1) * 10,
+                'processed_rows' => $chunk_index + 1,
                 'progress' => $progress,
-                'message' => "Đã xử lý chunk {$chunk_index} thành công"
+                'message' => "Đã xử lý row {$chunk_index} thành công"
             ]);
 
         } catch (\Exception $e) {
@@ -707,6 +707,27 @@ class ApplicationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Có lỗi xảy ra khi xử lý chunk: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function cancel_import(Request $request)
+    {
+        try {
+            // Xóa file tạm nếu có
+            $path = session('import_file_path');
+            if ($path && Storage::disk('local')->exists($path)) {
+                Storage::disk('local')->delete($path);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Import cancelled successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
             ], 500);
         }
     }

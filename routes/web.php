@@ -177,3 +177,4 @@ Route::post('/import-data-categories', 'App\Http\Controllers\CategoryController@
 Route::post('/import-data-platforms', 'App\Http\Controllers\PlatformController@import_data_platforms')->name('import_data_platforms');
 Route::post('/comment_import', 'App\Http\Controllers\CommentController@comment_import')->name('comment_import');
 Route::post('/process-chunk', 'App\Http\Controllers\ApplicationController@process_chunk')->name('process_chunk');
+Route::post('/import-data-application/cancel', 'App\Http\Controllers\ApplicationController@cancel_import');
