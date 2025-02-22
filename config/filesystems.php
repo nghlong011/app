@@ -53,14 +53,20 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
         ],
 
- 'wasabi' => [
- 'driver' => 's3',
- 'key' => env('WAS_ACCESS_KEY_ID'),
- 'secret' => env('WAS_SECRET_ACCESS_KEY'),
- 'region' => env('WAS_DEFAULT_REGION'),
- 'bucket' => env('WAS_BUCKET'),
- 'endpoint' => 'https://s3.wasabisys.com'
- ],
+        'temp' => [
+            'driver' => 'local',
+            'root' => storage_path('app/temp'),
+            'visibility' => 'private',
+        ],
+
+        'wasabi' => [
+            'driver' => 's3',
+            'key' => env('WAS_ACCESS_KEY_ID'),
+            'secret' => env('WAS_SECRET_ACCESS_KEY'),
+            'region' => env('WAS_DEFAULT_REGION'),
+            'bucket' => env('WAS_BUCKET'),
+            'endpoint' => 'https://s3.wasabisys.com'
+        ],
 
     ],
 

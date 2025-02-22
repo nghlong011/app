@@ -592,22 +592,122 @@ class ApplicationController extends Controller
     
     public function import_data_application(Request $request)
     {
-        $request->validate([
-            'file' => 'required|mimes:csv,xlsx,xls',
-        ]);
+        try {
+            $request->validate([
+                'file' => 'required|mimes:csv,xlsx,xls',
+            ]);
+            
+            if (!Storage::disk('local')->exists('temp')) {
+                Storage::disk('local')->makeDirectory('temp');
+            }
+            
+            $path = $request->file('file')->store('temp', 'local');
+            
+            if (!Storage::disk('local')->exists($path)) {
+                throw new \Exception('Không thể lưu file tạm');
+            }
+            
+            $data = Excel::toArray(new ApplicationImport, storage_path('app/' . $path));
+            if (empty($data) || !isset($data[0])) {
+                throw new \Exception('File không có dữ liệu hợp lệ');
+            }
+            
+            // Filter out empty rows
+            $rows = array_filter($data[0], function($row) {
+                return !empty($row['id']) && !empty($row['title']) && array_filter($row);
+            });
+            
+            // Re-index array after filtering
+            $rows = array_values($rows);
+            
+            if (empty($rows)) {
+                throw new \Exception('Không có dữ liệu hợp lệ để import sau khi lọc');
+            }
+            // Chia thành các chunks nhỏ, mỗi chunk 10 rows
+            $chunks = array_chunk($rows, 10);
+            return response()->json([
+                'success' => true,
+                'total_chunks' => count($chunks),
+                'total_rows' => count($rows),
+                'path' => $path
+            ]);
 
-        $startTime = microtime(true);
+        } catch (\Exception $e) {
+            \Log::error('Import error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 
-        $path = $request->file('file');
-        Excel::import(new ApplicationImport, $path);
-        Cache::flush();
+    public function process_chunk(Request $request)
+    {
+        try {
+            $path = $request->input('path');
+            $chunk_index = $request->input('chunk_index');
+            
+            if (!$path || !Storage::disk('local')->exists($path)) {
+                throw new \Exception('File tạm không tồn tại');
+            }
 
-        $endTime = microtime(true);
-        $executionTime = $endTime - $startTime;
+            $data = Excel::toArray(new ApplicationImport, storage_path('app/' . $path));
+            
+            if (empty($data) || !isset($data[0])) {
+                throw new \Exception('Không thể đọc dữ liệu từ file');
+            }
+            
+            $rows = array_filter($data[0], function($row) {
+                return !empty($row['id']) && !empty($row['title']) && array_filter($row);
+            });           
+            $chunks = array_chunk($rows, 10);
+            
+            if (!isset($chunks[$chunk_index])) {
+                throw new \Exception('Chunk index không hợp lệ');
+            }
+            
+            $chunk = $chunks[$chunk_index];
+            DB::beginTransaction();
+            
+            try {
+                // Import chunk hiện tại
+                foreach ($chunk as $row) {
+                    (new ApplicationImport)->model($row);
+                }
+                
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+            
+            // Tính phần trăm hoàn thành
+            $progress = round(($chunk_index + 1) / count($chunks) * 100, 2);
+            
+            // Xóa file tạm sau khi hoàn thành
+            if ($chunk_index == count($chunks) - 1) {
+                Storage::disk('local')->delete($path);
+                Cache::flush();
+            }
+            
+            return response()->json([
+                'success' => true,
+                'chunk_index' => $chunk_index,
+                'processed_rows' => ($chunk_index + 1) * 10,
+                'progress' => $progress,
+                'message' => "Đã xử lý chunk {$chunk_index} thành công"
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Import thành công. Thời gian chạy: ' . round($executionTime, 2) . ' giây'
-        ]);
+        } catch (\Exception $e) {
+            \Log::error('Process chunk error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi xử lý chunk: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

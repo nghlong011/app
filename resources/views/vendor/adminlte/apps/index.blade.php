@@ -116,39 +116,66 @@
 {{ $rows->onEachSide(1)->links() }}
 
 <script>
-    document.getElementById('import-form').addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        let startTime = Date.now();
-        let executionTimeElement = document.getElementById('execution-time');
-        executionTimeElement.textContent = 'Đang nhập dữ liệu...';
-
-        let interval = setInterval(function() {
-            let elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
-            executionTimeElement.textContent = 'Thời gian chạy: ' + elapsedTime + ' giây';
-        }, 100);
-
-        let formData = new FormData(this);
-        fetch(this.action, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            clearInterval(interval);
-            if (data.success) {
-                executionTimeElement.textContent = data.message;
-                setTimeout(() => location.reload(), 2000); // Tải lại trang sau 2 giây
-            } else {
-                executionTimeElement.textContent = 'Có lỗi xảy ra!';
-            }
-        })
-        .catch(error => {
-            clearInterval(interval);
-            executionTimeElement.textContent = 'Có lỗi xảy ra!';
-            console.error('Error:', error);
-        });
+document.getElementById('import-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    
+    let startTime = Date.now();
+    let executionTimeElement = document.getElementById('execution-time');
+    executionTimeElement.textContent = 'Đang chuẩn bị dữ liệu...';
+    
+    let formData = new FormData(this);
+    
+    // Bước 1: Upload file và chuẩn bị chunks
+    fetch("{{ route('import_data_application') }}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            executionTimeElement.textContent = `Tổng số dòng: ${data.total_rows}. Bắt đầu xử lý...`;
+            processChunks(data.path, 0, data.total_chunks);
+        }
+    })
+    .catch(error => {
+        executionTimeElement.textContent = 'Có lỗi xảy ra khi tải file!';
+        console.error('Error:', error);
     });
+});
+
+function processChunks(path, chunkIndex, totalChunks) {
+    fetch("{{ route('process_chunk') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            path: path,
+            chunk_index: chunkIndex
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let executionTimeElement = document.getElementById('execution-time');
+            executionTimeElement.textContent = `Đã xử lý ${data.processed_rows} dòng (${data.progress}%)`;
+            
+            // Nếu còn chunks thì tiếp tục xử lý
+            if (chunkIndex + 1 < totalChunks) {
+                processChunks(path, chunkIndex + 1, totalChunks);
+            } else {
+                executionTimeElement.textContent = 'Hoàn thành import dữ liệu!';
+                setTimeout(() => location.reload(), 2000);
+            }
+        }
+    })
+    .catch(error => {
+        let executionTimeElement = document.getElementById('execution-time');
+        executionTimeElement.textContent = 'Có lỗi xảy ra trong quá trình xử lý!';
+        console.error('Error:', error);
+    });
+}
 </script>
 
 @stop

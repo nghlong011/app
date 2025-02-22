@@ -176,3 +176,4 @@ Route::post('/import-data-application', 'App\Http\Controllers\ApplicationControl
 Route::post('/import-data-categories', 'App\Http\Controllers\CategoryController@import_data_categories')->name('import_data_categories');
 Route::post('/import-data-platforms', 'App\Http\Controllers\PlatformController@import_data_platforms')->name('import_data_platforms');
 Route::post('/comment_import', 'App\Http\Controllers\CommentController@comment_import')->name('comment_import');
+Route::post('/process-chunk', 'App\Http\Controllers\ApplicationController@process_chunk')->name('process_chunk');
