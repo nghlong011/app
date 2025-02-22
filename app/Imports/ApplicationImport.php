@@ -9,6 +9,8 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Image;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 
 class ApplicationImport implements ToModel, WithHeadingRow
 {
@@ -19,14 +21,17 @@ class ApplicationImport implements ToModel, WithHeadingRow
             return null;
         }
 
+        $client = new Client(['timeout' => 30.0]); // Set timeout to 5 seconds
+
         $image_name = null;
         if (!empty($row['image'])) {
             try {
-                $imageData = file_get_contents($row['image']);
-                if ($imageData) {
+                $response = $client->get($row['image']);
+                if ($response->getStatusCode() == 200) {
+                    $imageData = $response->getBody()->getContents();
                     $image_name = image_upload($imageData, 200, 200, '', 85, 1, 0);
                 }
-            } catch (\Exception $e) {
+            } catch (RequestException $e) {
                 report($e);
             }
         }
@@ -37,12 +42,13 @@ class ApplicationImport implements ToModel, WithHeadingRow
                 $screenshots_links = explode(';', $row['screenshots']);
                 foreach ($screenshots_links as $screenshot_link) {
                     $screenshot_link = trim($screenshot_link);
-                    $imageData = file_get_contents($screenshot_link);
-                    if ($imageData) {
+                    $response = $client->get($screenshot_link);
+                    if ($response->getStatusCode() == 200) {
+                        $imageData = $response->getBody()->getContents();
                         $screenshots[] = image_upload($imageData, 400, 400, '', 85, 1, 6);
                     }
                 }
-            } catch (\Exception $e) {
+            } catch (RequestException $e) {
                 report($e);
             }
         }

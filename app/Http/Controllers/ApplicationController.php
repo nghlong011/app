@@ -595,9 +595,19 @@ class ApplicationController extends Controller
         $request->validate([
             'file' => 'required|mimes:csv,xlsx,xls',
         ]);
+
+        $startTime = microtime(true);
+
         $path = $request->file('file');
         Excel::import(new ApplicationImport, $path);
         Cache::flush();
-        return redirect()->back()->with('success', 'Import thành công');
+
+        $endTime = microtime(true);
+        $executionTime = $endTime - $startTime;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Import thành công. Thời gian chạy: ' . round($executionTime, 2) . ' giây'
+        ]);
     }
 }

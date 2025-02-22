@@ -99,12 +99,12 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form action="{{ route('import_data_application') }}" method="POST" enctype="multipart/form-data">
+                <form id="import-form" action="{{ route('import_data_application') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <input type="file" name="file">
                     <button type="submit" class="btn btn-primary">@lang('admin.import')</button>
                 </form>
-
+                <div id="execution-time" style="margin-top: 10px; font-weight: bold;"></div>
             </div>
         </div>
     </div>
@@ -114,5 +114,41 @@
 @endif
 
 {{ $rows->onEachSide(1)->links() }}
+
+<script>
+    document.getElementById('import-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        let startTime = Date.now();
+        let executionTimeElement = document.getElementById('execution-time');
+        executionTimeElement.textContent = 'Đang nhập dữ liệu...';
+
+        let interval = setInterval(function() {
+            let elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
+            executionTimeElement.textContent = 'Thời gian chạy: ' + elapsedTime + ' giây';
+        }, 100);
+
+        let formData = new FormData(this);
+        fetch(this.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            clearInterval(interval);
+            if (data.success) {
+                executionTimeElement.textContent = data.message;
+                setTimeout(() => location.reload(), 2000); // Tải lại trang sau 2 giây
+            } else {
+                executionTimeElement.textContent = 'Có lỗi xảy ra!';
+            }
+        })
+        .catch(error => {
+            clearInterval(interval);
+            executionTimeElement.textContent = 'Có lỗi xảy ra!';
+            console.error('Error:', error);
+        });
+    });
+</script>
 
 @stop
