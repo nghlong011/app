@@ -119,6 +119,7 @@
 <script>
 let isImporting = false;
 let shouldCancel = false;
+let allErrors = []; // Mảng để lưu tất cả các lỗi
 
 document.getElementById('import-form').addEventListener('submit', function(event) {
     event.preventDefault();
@@ -191,9 +192,17 @@ function processChunks(path, chunkIndex, totalRows) {
     })
     .then(response => response.json())
     .then(data => {
+        let executionTimeElement = document.getElementById('execution-time');
+        
         if (data.success) {
-            let executionTimeElement = document.getElementById('execution-time');
-            executionTimeElement.textContent = `Đã xử lý ${data.processed_rows}/${totalRows} dòng (${data.progress}%)`;
+            let statusText = `Đã xử lý ${data.processed_rows}/${data.total_rows} dòng (${data.progress}%)`;
+            
+            // Thêm lỗi mới vào mảng tổng hợp
+            if (data.has_errors) {
+                allErrors = allErrors.concat(data.errors);
+            }
+                        
+            executionTimeElement.innerHTML = statusText;
             
             if (chunkIndex + 1 < totalRows && !shouldCancel) {
                 setTimeout(() => {
@@ -203,19 +212,98 @@ function processChunks(path, chunkIndex, totalRows) {
                 isImporting = false;
                 document.getElementById('cancel-import').classList.add('d-none');
                 if (!shouldCancel) {
-                    executionTimeElement.textContent = 'Hoàn thành import dữ liệu!';
-                    setTimeout(() => location.reload(), 2000);
+                    let finalMessage = '<div class="alert alert-info">';
+                    finalMessage += '<h5><i class="icon fas fa-info"></i> Kết quả import dữ liệu</h5>';
+                    
+                    // Thống kê tổng quan
+                    finalMessage += `<p>Tổng số dòng đã xử lý: ${data.total_rows}</p>`;
+                    finalMessage += `<p>Số dòng thành công: ${data.total_rows - allErrors.length}</p>`;
+                    finalMessage += `<p>Số dòng lỗi: ${allErrors.length}</p>`;
+                    
+                    if (allErrors.length > 0) {
+                        // Tạo bảng hiển thị lỗi
+                        finalMessage += '<div class="table-responsive">';
+                        finalMessage += '<table class="table table-bordered table-striped">';
+                        finalMessage += '<thead><tr>';
+                        finalMessage += '<th>ID</th>';
+                        finalMessage += '<th>Tiêu đề</th>';
+                        finalMessage += '<th>Lỗi</th>';
+                        finalMessage += '</tr></thead>';
+                        finalMessage += '<tbody>';
+                        
+                        allErrors.forEach(error => {
+                            finalMessage += '<tr>';
+                            finalMessage += `<td>${error.id}</td>`;
+                            finalMessage += `<td>${error.title}</td>`;
+                            finalMessage += `<td>${error.error}</td>`;
+                            finalMessage += '</tr>';
+                        });
+                        
+                        finalMessage += '</tbody></table></div>';
+                        
+                        // Thêm nút xuất Excel với style Bootstrap
+                        finalMessage += '<div class="mt-3">';
+                        finalMessage += `<button class="btn btn-warning" onclick="exportErrorsToExcel()">
+                            <i class="fas fa-file-excel mr-1"></i> 
+                            Xuất ${allErrors.length} lỗi ra Excel
+                        </button>`;
+                        finalMessage += '</div>';
+                    } else {
+                        finalMessage += '<p class="text-success"><i class="fas fa-check"></i> Import dữ liệu thành công, không có lỗi!</p>';
+                        // Tự động tải lại trang sau 2 giây nếu không có lỗi
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                    
+                    finalMessage += '</div>';
+                    executionTimeElement.innerHTML = finalMessage;
                 }
             }
+        } else {
+            throw new Error(data.message);
         }
     })
     .catch(error => {
         isImporting = false;
         document.getElementById('cancel-import').classList.add('d-none');
         let executionTimeElement = document.getElementById('execution-time');
-        executionTimeElement.textContent = 'Có lỗi xảy ra trong quá trình xử lý!';
-        console.error('Error:', error);
+        executionTimeElement.innerHTML = `<div class="alert alert-danger">
+            <h5><i class="icon fas fa-ban"></i> Lỗi!</h5>
+            <p>${error.message || 'Lỗi không xác định'}</p>
+        </div>`;
+        console.error('Lỗi:', error);
     });
+}
+
+// Thêm hàm xuất lỗi ra Excel
+function exportErrorsToExcel() {
+    // Tạo dữ liệu cho file Excel
+    let excelData = [
+        ['ID', 'Tiêu đề', 'Lỗi'] // Header
+    ];
+    
+    // Thêm dữ liệu lỗi
+    allErrors.forEach(error => {
+        excelData.push([
+            error.id,
+            error.title,
+            error.error
+        ]);
+    });
+    
+    // Tạo một workbook mới
+    let wb = XLSX.utils.book_new();
+    
+    // Tạo worksheet từ dữ liệu
+    let ws = XLSX.utils.aoa_to_sheet(excelData);
+    
+    // Thêm worksheet vào workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Danh sách lỗi");
+    
+    // Tạo tên file với timestamp
+    let fileName = `danh_sach_loi_import_${new Date().toISOString().slice(0,10)}.xlsx`;
+    
+    // Xuất file
+    XLSX.writeFile(wb, fileName);
 }
 </script>
 

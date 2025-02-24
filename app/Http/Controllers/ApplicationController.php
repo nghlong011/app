@@ -648,6 +648,7 @@ class ApplicationController extends Controller
         try {
             $path = $request->input('path');
             $chunk_index = $request->input('chunk_index');
+            $errors = [];
             
             if (!$path || !Storage::disk('local')->exists($path)) {
                 throw new \Exception('File tạm không tồn tại');
@@ -663,24 +664,29 @@ class ApplicationController extends Controller
                 return !empty($row['id']) && !empty($row['title']) && array_filter($row);
             });
             
-            $chunks = array_chunk($rows, 1); // Xử lý từng row một
+            $chunks = array_chunk($rows, 1); // Xử lý từng dòng một
             
             if (!isset($chunks[$chunk_index])) {
                 throw new \Exception('Chunk index không hợp lệ');
             }
             
             $chunk = $chunks[$chunk_index];
-            DB::beginTransaction();
             
-            try {
-                foreach ($chunk as $row) {
+            foreach ($chunk as $row) {
+                try {
+                    DB::beginTransaction();
                     (new ApplicationImport)->model($row);
+                    DB::commit();
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    $errors[] = [
+                        'id' => $row['id'] ?? 'ID không xác định',
+                        'title' => $row['title'] ?? 'Không có tiêu đề',
+                        'error' => $this->getVietnameseErrorMessage($e->getMessage())
+                    ];
+                    \Log::error("Lỗi khi xử lý dòng {$row['id']}: " . $e->getMessage());
+                    // Tiếp tục với dòng tiếp theo thay vì dừng lại
                 }
-                
-                DB::commit();
-            } catch (\Exception $e) {
-                DB::rollBack();
-                throw $e;
             }
             
             // Tính phần trăm hoàn thành
@@ -696,19 +702,49 @@ class ApplicationController extends Controller
                 'success' => true,
                 'chunk_index' => $chunk_index,
                 'processed_rows' => $chunk_index + 1,
+                'total_rows' => count($chunks),
                 'progress' => $progress,
-                'message' => "Đã xử lý row {$chunk_index} thành công"
+                'message' => "Đã xử lý dòng {$chunk_index} thành công",
+                'errors' => $errors,
+                'has_errors' => count($errors) > 0
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Process chunk error: ' . $e->getMessage());
+            \Log::error('Lỗi xử lý chunk: ' . $e->getMessage());
             \Log::error($e->getTraceAsString());
             
             return response()->json([
                 'success' => false,
-                'message' => 'Có lỗi xảy ra khi xử lý chunk: ' . $e->getMessage()
+                'message' => 'Có lỗi xảy ra khi xử lý: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    // Thêm hàm để chuyển đổi thông báo lỗi sang tiếng Việt
+    private function getVietnameseErrorMessage($error)
+    {
+        // Các lỗi thường gặp và bản dịch tương ứng
+        $errorMessages = [
+            'SQLSTATE[23000]' => 'Lỗi trùng dữ liệu',
+            'Call to undefined method' => 'Lỗi phương thức không tồn tại',
+            'Connection refused' => 'Lỗi kết nối',
+            'Invalid image data' => 'Dữ liệu hình ảnh không hợp lệ',
+            'Failed to download' => 'Không thể tải xuống file',
+            'Undefined index' => 'Thiếu trường dữ liệu',
+            'Division by zero' => 'Lỗi chia cho 0',
+            'Array to string conversion' => 'Lỗi chuyển đổi dữ liệu',
+            'Maximum execution time' => 'Quá thời gian xử lý',
+        ];
+
+        // Kiểm tra và trả về thông báo lỗi tiếng Việt
+        foreach ($errorMessages as $key => $message) {
+            if (strpos($error, $key) !== false) {
+                return $message;
+            }
+        }
+
+        // Nếu không tìm thấy lỗi tương ứng, trả về thông báo gốc
+        return $error;
     }
 
     public function cancel_import(Request $request)

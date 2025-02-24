@@ -54,7 +54,7 @@
         <script src="{{ asset('js/notificationManager.js') }}?v2.1.0"></script>
         <script src="{{ asset('vendor/adminlte/dist/js/jquery.form.min.js') }}?v2.1.0"></script>
         @endif
-
+        <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 
         @endif 
