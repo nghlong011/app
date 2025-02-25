@@ -31,17 +31,29 @@ class ApplicationImport implements ToModel, WithHeadingRow
                     if ($response->getStatusCode() == 200) {
                         $imageData = $response->getBody()->getContents();
                         
-                        // Kiểm tra xem dữ liệu hình ảnh có hợp lệ không
-                        try {
-                            $img = Image::make($imageData);
-                            // Nếu có thể tạo được đối tượng Image, tức là hình ảnh hợp lệ
-                            $image_name = image_upload($imageData, 200, 200, '', 85, 1, 0);
-                        } catch (\Exception $e) {
-                            throw new \Exception("Hình ảnh không hợp lệ hoặc bị hỏng: " . $row['image']);
+                        // Kiểm tra nếu là file SVG
+                        if (strpos($response->getHeaderLine('Content-Type'), 'image/svg') !== false || 
+                            strtolower(pathinfo($row['image'], PATHINFO_EXTENSION)) === 'svg') {
+                            // Xử lý file SVG
+                            $filename = Str::random(40) . '.svg';
+                            // Lưu trực tiếp vào thư mục public
+                            if (!file_exists(public_path('images'.'/'.'uploads'))) {
+                                mkdir(public_path('images'.'/'.'uploads'), 0777, true);
+                            }
+                            file_put_contents(public_path('images'.'/'.'uploads/' . $filename), $imageData);
+                            $image_name = 'uploads/' . $filename;
+                        } else {
+                            // Xử lý các loại hình ảnh khác như cũ
+                            try {
+                                $img = Image::make($imageData);
+                                $image_name = image_upload($imageData, 200, 200, '', 85, 1, 0);
+                            } catch (\Exception $e) {
+                                throw new \Exception("Hình ảnh không hợp lệ hoặc bị hỏng: " . $row['image']);
+                            }
                         }
                     }
                 } catch (RequestException $e) {
-                    throw new \Exception("Không thể tải hình ảnh từ URL: " . $row['image']);
+                    throw new \Exception("Không thể tải hình ảnh từ URL: " . $row['image'].' - '.$e->getMessage());
                 }
             }
 
@@ -61,11 +73,11 @@ class ApplicationImport implements ToModel, WithHeadingRow
                                     $img = Image::make($imageData);
                                     $screenshots[] = image_upload($imageData, 400, 400, '', 85, 1, 6);
                                 } catch (\Exception $e) {
-                                    throw new \Exception("Screenshot không hợp lệ hoặc bị hỏng: " . $screenshot_link);
+                                    throw new \Exception("Screenshot không hợp lệ hoặc bị hỏng: " . $screenshot_link.' - '.$e->getMessage());
                                 }
                             }
                         } catch (RequestException $e) {
-                            throw new \Exception("Không thể tải screenshot từ URL: " . $screenshot_link);
+                            throw new \Exception("Không thể tải screenshot từ URL: " . $screenshot_link.' - '.$e->getMessage());
                         }
                     }
                 } catch (\Exception $e) {
